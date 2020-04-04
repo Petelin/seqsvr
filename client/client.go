@@ -8,9 +8,34 @@ import (
 	"seqsvr/base/common"
 	"seqsvr/base/lib/logger"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 )
+
+const retryPolicy = `{
+  "methodConfig": [
+    {
+      "name": [
+        {
+          "service": "allocsvr.AllocServer"
+        }
+      ],
+      "waitForReady": true,
+      "retryPolicy": {
+        "MaxAttempts": 10,
+        "InitialBackoff": "0.002s",
+        "MaxBackoff": "0.01s",
+        "BackoffMultiplier": 1,
+        "RetryableStatusCodes": [
+          "UNAVAILABLE",
+          "INTERNAL"
+        ]
+      }
+    }
+  ]
+}`
 
 var initAddr []string = []string{
 	"127.0.0.1:9001",
@@ -68,13 +93,19 @@ func (c *Client) forceUpdateRouter() {
 }
 
 func (c *Client) updateRouterStatus(version uint64, router map[string]*allocsvr.SectionIdArr) {
+	c.Lock()
+	defer c.Unlock()
+	if version <= c.RVersion {
+		return
+	}
+
 	newPool := make(map[string]allocsvr.AllocServerClient, len(router))
 	newRouterMap := make(map[string][]uint64)
 	for name, ids := range router {
 		newRouterMap[name] = ids.GetVal()
 		if _, ok := c.connPool[name]; !ok {
 			conn, err := newConn(name)
-			if err == nil {
+			if err != nil {
 				continue
 			}
 			newPool[name] = conn
@@ -88,15 +119,18 @@ func (c *Client) updateRouterStatus(version uint64, router map[string]*allocsvr.
 }
 
 func newConn(add string) (allocsvr.AllocServerClient, error) {
-	conn, err := grpc.Dial(add, grpc.WithInsecure()) // grpc.WithConnectParams(grpc.ConnectParams{
-	// 	Backoff: backoff.Config{
-	// 		BaseDelay:  time.Millisecond * 5,
-	// 		Multiplier: 1.6,
-	// 		Jitter:     0.1,
-	// 		MaxDelay:   time.Millisecond * 100,
-	// 	},
-	// 	MinConnectTimeout: time.Millisecond * 5,
-	// })
+	conn, err := grpc.Dial(add,
+		grpc.WithInsecure(),
+		grpc.WithDefaultServiceConfig(retryPolicy),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  time.Millisecond,
+				Multiplier: 1.6,
+				Jitter:     0.1,
+				MaxDelay:   time.Millisecond * 10,
+			},
+			MinConnectTimeout: time.Millisecond * 5,
+		}))
 
 	if err != nil {
 		return nil, err
@@ -104,9 +138,8 @@ func newConn(add string) (allocsvr.AllocServerClient, error) {
 	return allocsvr.NewAllocServerClient(conn), nil
 }
 
-func (c Client) FetchNextSeqNum(ctx context.Context, entityID uint32) uint64 {
+func (c *Client) FetchNextSeqNum(ctx context.Context, entityID uint32) uint64 {
 	sID := common.GetSectionIDByUid(uint64(entityID))
-
 	name := c.getServiceNameBySectionID(uint64(sID))
 	if name == "" {
 		// 路由表有问题
@@ -120,19 +153,27 @@ func (c Client) FetchNextSeqNum(ctx context.Context, entityID uint32) uint64 {
 		return c.fallBack(0)
 	}
 
-	resp, err := rpcCli.FetchNextSeqNum(ctx, &allocsvr.Uid{Uid: uint64(entityID)})
+	resp, err := rpcCli.FetchNextSeqNum(ctx, &allocsvr.Uid{
+		Uid:     uint64(entityID),
+		Version: c.RVersion,
+	})
 	if err != nil {
 		// err -> other error
-		logger.Fatalf("featch failed,err=%v", err)
+		logger.Fatalf("rpc call failed, err=%v", err)
 		return c.fallBack(0)
 	}
 	if resp == nil {
 		return c.fallBack(0)
 	}
+
+	if resp.Router != nil {
+		c.updateRouterStatus(resp.GetVersion(), resp.GetRouter())
+		return c.FetchNextSeqNum(ctx, entityID)
+	}
 	return resp.GetSeqNum()
 }
 
-func (c Client) getServiceNameBySectionID(sid uint64) string {
+func (c *Client) getServiceNameBySectionID(sid uint64) string {
 	for k, v := range c.routeMap {
 		for _, id := range v {
 			if id == sid {
@@ -144,6 +185,6 @@ func (c Client) getServiceNameBySectionID(sid uint64) string {
 	return ""
 }
 
-func (c Client) fallBack(i int) uint64 {
+func (c *Client) fallBack(i int) uint64 {
 	return 0
 }

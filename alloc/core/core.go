@@ -4,15 +4,19 @@ import (
 	"context"
 	"errors"
 	"seqsvr/base/common"
+	"seqsvr/base/lib/logger"
+	"seqsvr/base/lib/metricli"
 	storesvr "seqsvr/store/pb"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var ErrNotFoundUid = errors.New("not found the uid in the node")
-var ErrVersion = errors.New("not found the uid in the node")
-var ErrTimeout = errors.New("not found the uid in the node")
-var ErrMigrate = errors.New("not found the uid in the node")
+var ErrVersion = errors.New("ErrVersion")
+var ErrTimeout = errors.New("ErrTimeout")
+var ErrMigrate = errors.New("ErrMigrate")
+var ErrRouterNoChange = errors.New("ErrRouterNoChange")
 
 type Stat uint64
 
@@ -41,7 +45,7 @@ type Service struct {
 
 	name    string
 	rMut    *sync.RWMutex
-	section map[common.SectionID]common.Section
+	section map[common.SectionID]*common.Section
 
 	nextRVersion uint64
 	nextSection  map[common.SectionID]common.Section
@@ -61,7 +65,7 @@ func NewService(ctx context.Context, name string, client storesvr.StoreServerCli
 		rMut:        new(sync.RWMutex),
 		stat:        OnService,
 		StoreClient: client,
-		section:     make(map[common.SectionID]common.Section, 1000),
+		section:     make(map[common.SectionID]*common.Section, 1000),
 	}
 
 	err := s.updateRouter()
@@ -69,17 +73,38 @@ func NewService(ctx context.Context, name string, client storesvr.StoreServerCli
 		panic(err)
 	}
 	err = s.loadData(s.Rounter[s.name])
+
+	go func() {
+		t := time.NewTimer(time.Second * 1)
+		for {
+			select {
+			case <-t.C:
+				s.rMut.Lock()
+				if s.updateRouter() != nil {
+					s.rMut.Unlock()
+					break
+				}
+				s.loadData(s.Rounter[s.name])
+				s.rMut.Unlock()
+			}
+
+			t.Reset(time.Second)
+		}
+	}()
 	return s
 }
 
 func (s *Service) updateRouter() error {
-	s.rMut.RLock()
-	defer s.rMut.RUnlock()
-
 	resp, err := s.StoreClient.GetMapRouter(context.TODO(), &storesvr.GetMapRouterReq{})
 	if err != nil {
 		return err
 	}
+
+	if s.RVersion >= resp.GetVersion() {
+		return ErrRouterNoChange
+	}
+
+	logger.Infof("update router (from %d,to %d) ...", s.RVersion, resp.GetVersion())
 
 	result := make(map[string][]uint64, len(resp.GetRouterMap()))
 	if resp != nil {
@@ -93,9 +118,7 @@ func (s *Service) updateRouter() error {
 }
 
 func (s *Service) loadData(ids []uint64) error {
-	s.rMut.RLock()
-	defer s.rMut.RUnlock()
-
+	metricli.Count("alloc:loadData", 1)
 	for _, id := range ids {
 		resp, err := s.StoreClient.GetSeqMax(context.TODO(), &storesvr.GetSeqMaxReq{
 			SectionId: id,
@@ -109,24 +132,26 @@ func (s *Service) loadData(ids []uint64) error {
 	return nil
 }
 
-func (s *Service) FetchNextSeqNum(uid uint64, v uint64) (uint64, bool, error) {
+func (s *Service) FetchNextSeqNum(uid uint64, v uint64) (uint64, error) {
 	s.rMut.RLock()
 	defer s.rMut.RUnlock()
+	metricli.Count("alloc:FetchNextSeqNum:req", 1)
 
 	if s.stat == ServiceMigrate {
-		return 0, false, ErrMigrate
+		return 0, ErrMigrate
 	}
 
-	var routerChange bool
+	// 拒绝老的请求，让他们去重试
 	if s.RVersion > v {
-		routerChange = true
+		metricli.Count("alloc:FetchNextSeqNum:ErrVersion", 1)
+		return 0, ErrVersion
 	}
 
 	var seqNum uint64
 	sectionID := common.GetSectionIDByUid(uid)
 	section, ok := s.section[sectionID]
 	if !ok {
-		return 0, routerChange, ErrNotFoundUid
+		return 0, ErrNotFoundUid
 	}
 	if ok {
 		_, index := common.CalcIndex(section.RangeID, uid)
@@ -141,7 +166,7 @@ func (s *Service) FetchNextSeqNum(uid uint64, v uint64) (uint64, bool, error) {
 					MaxSeq:    section.MaxSeq + common.Step,
 				})
 				if err != nil {
-					return 0, routerChange, nil
+					return 0, nil
 				}
 				section.MaxSeq += common.Step
 			}
@@ -150,5 +175,5 @@ func (s *Service) FetchNextSeqNum(uid uint64, v uint64) (uint64, bool, error) {
 			section.Mut.RUnlock()
 		}
 	}
-	return seqNum, routerChange, nil
+	return seqNum, nil
 }

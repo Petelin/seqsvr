@@ -9,6 +9,7 @@ import (
 	"seqsvr/alloc/external"
 	allocsvr "seqsvr/alloc/pb"
 	"seqsvr/base/lib/logger"
+	"seqsvr/base/lib/metricli"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -19,6 +20,7 @@ func main() {
 	port := flag.String("port", "9001", "rpc port")
 	flag.Parse()
 
+	metricli.Init()
 	logger.InitLogger(zap.NewDevelopmentConfig())
 	address := "127.0.0.1:" + *port
 	lis, err := net.Listen("tcp", address)

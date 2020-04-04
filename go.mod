@@ -5,15 +5,11 @@ go 1.13
 replace protobuf/storesvr => ./protobuf/storesvr
 
 require (
-	github.com/coreos/etcd v3.3.20+incompatible // indirect
-	github.com/coreos/go-semver v0.3.0 // indirect
-	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
-	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
+	github.com/cyberdelia/go-metrics-graphite v0.0.0-20161219230853-39f87cc3b432
 	github.com/go-redis/redis/v7 v7.2.0
-	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.3.5
-	github.com/google/uuid v1.1.1 // indirect
-	github.com/stretchr/testify v1.4.0
+	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	go.uber.org/zap v1.14.1
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/grpc v1.28.0
 )

@@ -24,8 +24,8 @@ type Section struct {
 	SeqNum []uint64
 }
 
-func NewSection(id SectionID, maxSeq uint64) Section {
-	s := Section{
+func NewSection(id SectionID, maxSeq uint64) *Section {
+	s := &Section{
 		RangeID: RangeID{
 			IdBegin: uint64(id) * PerSectionIdSize,
 			Size:    PerSectionIdSize - 1,
