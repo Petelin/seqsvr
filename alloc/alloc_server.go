@@ -3,8 +3,8 @@ package alloc
 import (
 	"context"
 	"google.golang.org/grpc/codes"
-	"seqsvr/lib/grpcerr"
-	"seqsvr/protobuf/allocsvr"
+	"seqsvr/base/lib/grpcerr"
+	"seqsvr/base/protobuf/allocsvr"
 )
 
 type Server struct {

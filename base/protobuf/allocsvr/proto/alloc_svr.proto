@@ -11,7 +11,7 @@ message SectionIdArr {
     repeated uint32 val = 1;
 }
 
-//map[string][]SectionID
+//map[string][]SectionID => ip:{1,2,3}
 message SeqNum {
     uint64 seq_num = 1;
     map<string, SectionIdArr> router = 2;

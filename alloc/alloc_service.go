@@ -4,8 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/coreos/etcd/clientv3"
-	"seqsvr/common"
+	"seqsvr/base/common"
 	"sync"
 	"sync/atomic"
 )

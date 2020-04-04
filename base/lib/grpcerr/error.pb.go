@@ -3,10 +3,12 @@
 
 package grpcerr
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import any "github.com/golang/protobuf/ptypes/any"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	any "github.com/golang/protobuf/ptypes/any"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Error struct {
 	Code                 uint32     `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
@@ -34,16 +36,17 @@ func (m *Error) Reset()         { *m = Error{} }
 func (m *Error) String() string { return proto.CompactTextString(m) }
 func (*Error) ProtoMessage()    {}
 func (*Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_error_b67d6bfaedc8c1bf, []int{0}
+	return fileDescriptor_0579b252106fcf4a, []int{0}
 }
+
 func (m *Error) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Error.Unmarshal(m, b)
 }
 func (m *Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Error.Marshal(b, m, deterministic)
 }
-func (dst *Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Error.Merge(dst, src)
+func (m *Error) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Error.Merge(m, src)
 }
 func (m *Error) XXX_Size() int {
 	return xxx_messageInfo_Error.Size(m)
@@ -93,9 +96,9 @@ func init() {
 	proto.RegisterType((*Error)(nil), "grpcerr.Error")
 }
 
-func init() { proto.RegisterFile("error.proto", fileDescriptor_error_b67d6bfaedc8c1bf) }
+func init() { proto.RegisterFile("error.proto", fileDescriptor_0579b252106fcf4a) }
 
-var fileDescriptor_error_b67d6bfaedc8c1bf = []byte{
+var fileDescriptor_0579b252106fcf4a = []byte{
 	// 188 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x44, 0x8e, 0x4d, 0xaa, 0x83, 0x30,
 	0x14, 0x85, 0xc9, 0xf3, 0x3f, 0xf2, 0x26, 0xe1, 0x0d, 0xe2, 0xa3, 0x83, 0xd0, 0x51, 0x06, 0x25,

@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package storesvr;
+
+message no_content {
+
+}
+
+message UpdateMaxSeqReq {
+    uint64 section_id = 1;
+    uint64 max_seq = 2;
+}
+
+message GetSeqMaxReq {
+    uint64 section_id = 1;
+}
+
+message GetSeqMaxResp {
+    uint64 max_seq = 1;
+}
+
+message GetMapRouterReq {
+}
+
+message Sections {
+    repeated uint64 section_ids = 1;
+}
+
+message GetMapRouterResp {
+    uint64 version = 1;
+    map<string, Sections> router_map = 2;
+}
+
+message SetHostRouterReq {
+    string host_name = 1;
+    Sections sections = 2;
+}
+
+service StoreServer {
+    // 更新MaxSeq
+    rpc UpdateMaxSeq (UpdateMaxSeqReq) returns (no_content) {
+    }
+    // 获取MaxSeq
+    rpc GetSeqMax (GetSeqMaxReq) returns (GetSeqMaxResp) {
+    }
+
+    // 获取全路由表
+    rpc GetMapRouter (GetMapRouterReq) returns (GetMapRouterResp) {
+    }
+
+    // 设置host路由表
+    rpc SetHostRouter (SetHostRouterReq) returns (GetMapRouterResp) {
+    }
+}
+

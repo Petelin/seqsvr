@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"seqsvr/lib/mmap"
+	"seqsvr/base/lib/mmap"
 	"sync"
 )
 
