@@ -22,7 +22,7 @@ type RPCService struct {
 
 func (R RPCService) UpdateMaxSeq(ctx context.Context, req *storesvr.UpdateMaxSeqReq) (*storesvr.NoContent, error) {
 	logger.Infof("UpdateMaxSeq: %v", req)
-	rediscli.Cli.Set(seqKey(req.GetSectionId()), req.GetMaxSeq(), 0)
+	rediscli.Cli.Set(seqKey(req.GetSectionId()), req.GetMaxSeq(), -1)
 	return &storesvr.NoContent{}, nil
 
 }
@@ -30,6 +30,9 @@ func (R RPCService) UpdateMaxSeq(ctx context.Context, req *storesvr.UpdateMaxSeq
 func (R RPCService) GetSeqMax(ctx context.Context, req *storesvr.GetSeqMaxReq) (*storesvr.GetSeqMaxResp, error) {
 	logger.Infof("GetSeqMax: %v", req)
 	maxSeq, err := rediscli.Cli.Get(seqKey(req.GetSectionId())).Uint64()
+	if err == redis.Nil {
+		err = nil
+	}
 	return &storesvr.GetSeqMaxResp{
 		MaxSeq: maxSeq,
 	}, err
@@ -107,6 +110,5 @@ func (R RPCService) SetHostRouter(ctx context.Context, req *storesvr.SetHostRout
 }
 
 func seqKey(key uint64) string {
-	return fmt.Sprint("seq:%d", key)
-
+	return fmt.Sprintf("seq:%d", key)
 }

@@ -1,17 +1,15 @@
 package alloc
 
 import (
-    storesvr "seqsvr/store/pb"
+	storesvr "seqsvr/store/pb"
 
-    "google.golang.org/grpc"
+	"google.golang.org/grpc"
 )
 
-var storeCli storesvr.StoreServerClient
-
-func InitStoreCli()  {
-    conn, err := grpc.Dial("localhost:8000")
-    if err != nil{
-        panic(err)
-    }
-    storeCli = storesvr.NewStoreServerClient(conn)
+func GetStoreCli() storesvr.StoreServerClient {
+	conn, err := grpc.Dial("localhost:8000", grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	return storesvr.NewStoreServerClient(conn)
 }

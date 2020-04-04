@@ -3,18 +3,19 @@ syntax = "proto3";
 package allocsvr;
 
 message Uid {
-    uint32 uid = 1;
+    uint64 uid = 1;
     uint64 version = 2;
 }
 
 message SectionIdArr {
-    repeated uint32 val = 1;
+    repeated uint64 val = 1;
 }
 
 //map[string][]SectionID => ip:{1,2,3}
 message SeqNum {
     uint64 seq_num = 1;
     map<string, SectionIdArr> router = 2;
+    uint64 version = 3;
 }
 
 service AllocServer {
