@@ -1,37 +1,38 @@
-//go:generate zsh -c "protoc -I pb/ --go_out=plugins=grpc:./pb ./pb/*.proto"
-
-package alloc
+package main
 
 import (
 	"context"
+	"flag"
+	"log"
+	"net"
+	"seqsvr/alloc/core"
+	"seqsvr/alloc/external"
 	allocsvr "seqsvr/alloc/pb"
-	"seqsvr/base/lib/grpcerr"
+	"seqsvr/base/lib/logger"
 
-	"google.golang.org/grpc/codes"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
-type Server struct {
-	service *Service
-}
+func main() {
+	port := flag.String("port", "9001", "rpc port")
+	flag.Parse()
 
-func (s *Server) FetchNextSeqNum(ctx context.Context, req *allocsvr.Uid) (*allocsvr.SeqNum, error) {
-	seqNum, b, err := s.service.FetchNextSeqNum(req.GetUid(), req.GetVersion())
+	logger.InitLogger(zap.NewDevelopmentConfig())
+	address := "127.0.0.1:" + *port
+	lis, err := net.Listen("tcp", address)
 	if err != nil {
-		if err == ErrMigrate {
-			return nil, grpcerr.New(codes.Unavailable, err.Error(), 14)
-		}
+		log.Fatalf("failed to listen: %v", err)
 	}
-	rsp := &allocsvr.SeqNum{SeqNum: seqNum}
-	if b {
-		rsp.Version = s.service.RVersion
-		rsp.Router = make(map[string]*allocsvr.SectionIdArr)
-		for k, v := range s.service.Rounter {
-			tmp := &allocsvr.SectionIdArr{
-				Val: v,
-			}
-			rsp.Router[k] = tmp
-		}
-	}
+	s := grpc.NewServer()
+	reflection.Register(s)
+	allocsvr.RegisterAllocServerServer(s, &Server{
+		service: core.NewService(context.Background(), address, external.GetStoreCli()),
+	})
 
-	return rsp, nil
+	logger.Infof("alloc start service: %s", address)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }

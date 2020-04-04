@@ -1,4 +1,4 @@
-package alloc
+package external
 
 import (
 	storesvr "seqsvr/store/pb"

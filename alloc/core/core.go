@@ -1,4 +1,4 @@
-package alloc
+package core
 
 import (
 	"context"
@@ -40,7 +40,7 @@ type Service struct {
 	ctx context.Context
 
 	name    string
-	rMut    sync.RWMutex
+	rMut    *sync.RWMutex
 	section map[common.SectionID]common.Section
 
 	nextRVersion uint64
@@ -58,7 +58,7 @@ func NewService(ctx context.Context, name string, client storesvr.StoreServerCli
 	s := &Service{
 		ctx:         ctx,
 		name:        name,
-		rMut:        sync.RWMutex{},
+		rMut:        new(sync.RWMutex),
 		stat:        OnService,
 		StoreClient: client,
 		section:     make(map[common.SectionID]common.Section, 1000),
@@ -138,12 +138,12 @@ func (s *Service) FetchNextSeqNum(uid uint64, v uint64) (uint64, bool, error) {
 			if seqNum > section.MaxSeq {
 				_, err := s.StoreClient.UpdateMaxSeq(context.TODO(), &storesvr.UpdateMaxSeqReq{
 					SectionId: uint64(sectionID),
-					MaxSeq:    section.MaxSeq + 1000,
+					MaxSeq:    section.MaxSeq + common.Step,
 				})
 				if err != nil {
 					return 0, routerChange, nil
 				}
-				section.MaxSeq += 1000
+				section.MaxSeq += common.Step
 			}
 			section.Mut.Unlock()
 		} else {

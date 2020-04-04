@@ -1,15 +1,16 @@
 package logger
 
 import (
-	"go.uber.org/zap"
 	"fmt"
-	"go.uber.org/zap/zapcore"
 	"time"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var Logger *zap.Logger
 
-func InitLogger(cfg *zap.Config) {
+func InitLogger(cfg zap.Config) {
 	var err error
 	if cfg.Development {
 		cfg.EncoderConfig = zap.NewDevelopmentEncoderConfig()

@@ -1,4 +1,4 @@
-package alloc
+package core
 
 type Node struct {
 	Addr string `json:"addr"`
