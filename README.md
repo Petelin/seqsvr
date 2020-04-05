@@ -11,16 +11,17 @@
 
 
 ## 性能，单机
-全部部署台同一台机器上，5秒统计值。 
-metrics: 21:35:24.940022 histogram alloc:FetchNextSeqNum
-metrics: 21:35:24.940033   count:          253593
-metrics: 21:35:24.940036   min:               147
-metrics: 21:35:24.940039   max:               306
-metrics: 21:35:24.940067   mean:              202.80
-metrics: 21:35:24.940074   stddev:             59.49
-metrics: 21:35:24.940079   median:            166.00
-metrics: 21:35:24.940082   75%:               269.50
-metrics: 21:35:24.940098   95%:               306.00
-metrics: 21:35:24.940102   99%:               306.00
-metrics: 21:35:24.940104   99.9%:             306.00
 
+全部部署台同一台机器上，5秒统计值。 
+
+>metrics: 21:35:24.940022 histogram alloc:FetchNextSeqNum
+>metrics: 21:35:24.940033   count:          253593
+>metrics: 21:35:24.940036   min:               147
+>metrics: 21:35:24.940039   max:               306
+>metrics: 21:35:24.940067   mean:              202.80
+>metrics: 21:35:24.940074   stddev:             59.49
+>metrics: 21:35:24.940079   median:            166.00
+>metrics: 21:35:24.940082   75%:               269.50
+>metrics: 21:35:24.940098   95%:               306.00
+>metrics: 21:35:24.940102   99%:               306.00
+>metrics: 21:35:24.940104   99.9%:             306.00
