@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -9,23 +10,32 @@ import (
 )
 
 var Logger *zap.Logger
+var once sync.Once
 
-func InitLogger(cfg zap.Config) {
-	var err error
-	if cfg.Development {
-		cfg.EncoderConfig = zap.NewDevelopmentEncoderConfig()
-	} else {
-		cfg.EncoderConfig = zap.NewProductionEncoderConfig()
-	}
-	if cfg.Encoding == "console" {
-		cfg.EncoderConfig.EncodeTime = timeEncoder
-	} else {
-		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	}
-	Logger, err = cfg.Build()
-	if err != nil {
-		panic(err)
-	}
+func InitLogger(cfgs ...zap.Config) {
+	once.Do(func() {
+		var cfg zap.Config
+		if len(cfgs) == 0 {
+			cfg = zap.NewDevelopmentConfig()
+		} else {
+			cfg = cfgs[0]
+		}
+		var err error
+		if cfg.Development {
+			cfg.EncoderConfig = zap.NewDevelopmentEncoderConfig()
+		} else {
+			cfg.EncoderConfig = zap.NewProductionEncoderConfig()
+		}
+		if cfg.Encoding == "console" {
+			cfg.EncoderConfig.EncodeTime = timeEncoder
+		} else {
+			cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		}
+		Logger, err = cfg.Build()
+		if err != nil {
+			panic(err)
+		}
+	})
 }
 
 func timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
@@ -46,6 +56,10 @@ func Debug(msg string, field ...zap.Field) {
 
 func Error(msg string, field ...zap.Field) {
 	Logger.Error(msg, field...)
+}
+
+func Errorf(msg string, field ...interface{}) {
+	Logger.Error(fmt.Sprintf(msg, field...))
 }
 
 func Warn(msg string, field ...zap.Field) {

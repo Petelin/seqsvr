@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"seqsvr/base/lib/logger"
+	"seqsvr/judge"
 	"seqsvr/store/external/rediscli"
 	storesvr "seqsvr/store/pb"
 	"strconv"
@@ -75,6 +76,13 @@ func (R RPCService) GetMapRouter(ctx context.Context, req *storesvr.GetMapRouter
 
 func (R RPCService) SetHostRouter(ctx context.Context, req *storesvr.SetHostRouterReq) (*storesvr.GetMapRouterResp, error) {
 	logger.Infof("SetHostRouter: %v", req)
+	defer func() {
+		if v, err := rediscli.Cli.Get(MapRouterVersionKey).Uint64(); err == nil {
+			judge.NotifyRouterChange(v)
+		} else {
+			logger.Errorf("send notify failed, err=%v", err)
+		}
+	}()
 	sb := strings.Builder{}
 	for _, id := range req.GetSections().GetSectionIds() {
 		sb.WriteString(fmt.Sprint(id))

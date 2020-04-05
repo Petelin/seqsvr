@@ -7,6 +7,7 @@ import (
 	allocsvr "seqsvr/alloc/pb"
 	"seqsvr/base/common"
 	"seqsvr/base/lib/logger"
+	"seqsvr/base/lib/metricli"
 	"sync"
 	"time"
 
@@ -37,7 +38,7 @@ const retryPolicy = `{
   ]
 }`
 
-var initAddr []string = []string{
+var initAddr = []string{
 	"127.0.0.1:9001",
 	"127.0.0.1:9002",
 }
@@ -139,11 +140,18 @@ func newConn(add string) (allocsvr.AllocServerClient, error) {
 }
 
 func (c *Client) FetchNextSeqNum(ctx context.Context, entityID uint32) uint64 {
+	start := time.Now()
+	defer func() {
+		d := time.Now().Sub(start)
+		metricli.Histogram("alloc:FetchNextSeqNum", d.Microseconds())
+	}()
+
 	sID := common.GetSectionIDByUid(uint64(entityID))
 	name := c.getServiceNameBySectionID(uint64(sID))
 	if name == "" {
 		// 路由表有问题
-		return c.fallBack(0)
+		c.forceUpdateRouter()
+		return c.FetchNextSeqNum(ctx, entityID)
 	}
 
 	rpcCli, ok := c.connPool[name]
@@ -169,6 +177,9 @@ func (c *Client) FetchNextSeqNum(ctx context.Context, entityID uint32) uint64 {
 	if resp.Router != nil {
 		c.updateRouterStatus(resp.GetVersion(), resp.GetRouter())
 		return c.FetchNextSeqNum(ctx, entityID)
+	}
+	if resp.GetSeqNum() == 0 {
+		logger.Fatalf("0 , %v", resp)
 	}
 	return resp.GetSeqNum()
 }

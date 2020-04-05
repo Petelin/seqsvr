@@ -3,13 +3,14 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"seqsvr/base/common"
 	"seqsvr/base/lib/logger"
 	"seqsvr/base/lib/metricli"
+	"seqsvr/judge"
 	storesvr "seqsvr/store/pb"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 var ErrNotFoundUid = errors.New("not found the uid in the node")
@@ -68,30 +69,33 @@ func NewService(ctx context.Context, name string, client storesvr.StoreServerCli
 		section:     make(map[common.SectionID]*common.Section, 1000),
 	}
 
-	err := s.updateRouter()
+	err := s.forceUpdate()
 	if err != nil {
 		panic(err)
 	}
-	err = s.loadData(s.Rounter[s.name])
 
 	go func() {
-		t := time.NewTimer(time.Second * 1)
-		for {
-			select {
-			case <-t.C:
-				s.rMut.Lock()
-				if s.updateRouter() != nil {
-					s.rMut.Unlock()
-					break
-				}
-				s.loadData(s.Rounter[s.name])
-				s.rMut.Unlock()
+		judge.WatchRouterChange(func(version uint64) {
+			fmt.Print(version)
+			if version > s.RVersion {
+				s.forceUpdate()
 			}
-
-			t.Reset(time.Second)
-		}
+		})
 	}()
 	return s
+}
+
+func (s *Service) forceUpdate() error {
+	s.rMut.Lock()
+	defer s.rMut.Unlock()
+	err := s.updateRouter()
+	if err == ErrRouterNoChange {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return s.loadData(s.Rounter[s.name])
 }
 
 func (s *Service) updateRouter() error {
@@ -144,6 +148,11 @@ func (s *Service) FetchNextSeqNum(uid uint64, v uint64) (uint64, error) {
 	// 拒绝老的请求，让他们去重试
 	if s.RVersion > v {
 		metricli.Count("alloc:FetchNextSeqNum:ErrVersion", 1)
+		return 0, ErrVersion
+		// 拒绝新的请求，因为自己出错了, 让他们等会重试一下
+	} else if s.RVersion < v {
+		metricli.Count("alloc.FetchNextSeqNum:oldAlloc", 1)
+		s.forceUpdate()
 		return 0, ErrVersion
 	}
 

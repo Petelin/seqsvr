@@ -1,0 +1,5 @@
+package judge
+
+func HeartBeat() {
+
+}

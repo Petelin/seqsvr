@@ -16,3 +16,8 @@ func Count(name string, n int64) {
 	c := metrics.GetOrRegister(name, metrics.NewCounter())
 	c.(metrics.Counter).Inc(n)
 }
+
+func Histogram(name string, n int64) {
+	c := metrics.GetOrRegister(name, metrics.NewHistogram(metrics.NewUniformSample(5)))
+	c.(metrics.Histogram).Update(n)
+}
