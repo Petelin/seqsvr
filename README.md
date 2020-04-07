@@ -12,7 +12,7 @@
 
 ## 性能，单机
 
-全部部署台同一台机器上，5秒统计值。 
+全部部署台同一台机器上，5秒统计值。 2019年Macbook(6,16)的机器, 单节点5wQPS. 
 ```
 >metrics: 21:35:24.940022 histogram alloc:FetchNextSeqNum
 >metrics: 21:35:24.940033   count:          253593
